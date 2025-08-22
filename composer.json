@@ -10,7 +10,6 @@
     "require": {
         "silverstripe/framework": "^6.0",
         "silverstripe/admin": "^3.0",
-        "silverstripe/restfulserver": "4.x-dev",
         "silverstripe/crontask": "^4.0",
         "level51/silverstripe-jwt-utils": "*"
     },
