@@ -26,6 +26,11 @@ Tipbr\Services\JWTService:
   # JWT algorithm
   algorithm: 'HS256'
 
+# Extend Member to show password reset requests in admin
+SilverStripe\Security\Member:
+  extensions:
+    - Tipbr\Extensions\MemberExtension
+
 # Configure API routes
 SilverStripe\Control\Director:
   rules:
