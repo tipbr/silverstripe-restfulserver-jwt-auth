@@ -41,6 +41,7 @@ class AuthApiController extends ApiController
 
         return $this->success(['token' => $token]);
     }
+
     public function verify()
     {
         $this->ensureGET();
