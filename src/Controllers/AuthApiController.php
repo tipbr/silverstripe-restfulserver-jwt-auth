@@ -4,24 +4,47 @@ namespace Tipbr\Controllers;
 
 use SilverStripe\Security\Group;
 use SilverStripe\Security\Member;
-use TipBr\DataObjects\PasswordResetRequest;
-use FullscreenInteractive\Restful\Controllers\AuthController;
+use Tipbr\Controllers\ApiController;
+use Tipbr\DataObjects\PasswordResetRequest;
 
-// TODO: User group should be configurable?
 class AuthApiController extends ApiController
 {
     private static $allowed_actions = [
         'login',
+        'verify',
+        'refresh',
         'register',
         'forgotPassword',
         'resetPassword',
         'changePassword'
     ];
 
-    /**
-     * Register a new user
-     */
-    // TODO: accept extra fields for the member
+    public function index()
+    {
+        return $this->httpError(400, 'Bad Request');
+    }
+
+    public function login()
+    {}
+
+    public function verify()
+    {
+        $this->ensureGET();
+
+        $member = $this->ensureUserLoggedIn();
+        if (!$member) {
+            return $this->httpError(401, 'Not logged in');
+        }
+
+        return $this->success([
+            'Member' => $member->toMap(),
+        ]);
+    }
+
+    public function refresh() {
+
+    }
+
     public function register()
     {
         $this->ensurePOST();

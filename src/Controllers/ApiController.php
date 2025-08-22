@@ -2,11 +2,25 @@
 
 namespace Tipbr\Controllers;
 
+use ArrayAccess;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+use Level51\JWTUtils\JWTUtils;
+use SilverStripe\Security\Member;
+use SilverStripe\Security\Security;
 use SilverStripe\Control\Controller;
+use SilverStripe\Core\Config\Config;
+use SilverStripe\Model\List\SS_List;
+use SilverStripe\Security\Permission;
 use SilverStripe\Control\HTTPResponse;
+use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Security\IdentityStore;
+use SilverStripe\Model\List\PaginatedList;
+use SilverStripe\Control\HTTPResponse_Exception;
 
 class ApiController extends Controller
-{    public function init()
+{
+    public function init()
     {
         parent::init();
 
@@ -445,4 +459,5 @@ class ApiController extends Controller
         }
 
         $this->httpError(400, 'Request must be provided as a DELETE request');
-    }}
+    }
+}

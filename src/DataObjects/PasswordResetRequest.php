@@ -6,8 +6,6 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\Security\Member;
 use SilverStripe\Forms\ReadonlyField;
 
-// TODO: should be configurable. Length, expiry time, auto delete etc.
-
 class PasswordResetRequest extends DataObject
 {
     private static $table_name = 'PasswordResetRequest';
