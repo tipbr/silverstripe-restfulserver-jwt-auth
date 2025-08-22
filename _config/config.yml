@@ -1,1 +1,13 @@
 # see https://docs.silverstripe.org/en/developer_guides/configuration/configuration/
+
+# Password Reset Request Cleanup Configuration
+Tipbr\Tasks\PasswordResetCleanupTask:
+  # Time period after which password reset requests are considered expired and will be deleted
+  # Format: any string acceptable by strtotime() (e.g., '1 hour', '30 minutes', '2 days')
+  cutoff_time: '1 hour'
+
+Tipbr\Tasks\PasswordResetRequestCleanup_CronTask:
+  # Cron schedule for running the password reset cleanup task
+  # Format: standard cron expression (minute hour day month weekday)
+  # Default: "*/5 * * * *" runs every 5 minutes
+  schedule: "*/5 * * * *"
