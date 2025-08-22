@@ -1,10 +1,15 @@
 {
     "name": "tipbr/silverstripe-restfulserver-jwt-auth",
-    "description": "A skeleton for Silverstripe CMS modules.",
+    "description": "JWT Authentication for SilverStripe RestfulServer - provides secure API authentication with proper permission integration",
     "type": "silverstripe-vendormodule",
     "keywords": [
         "silverstripe",
-        "CMS"
+        "CMS",
+        "jwt",
+        "authentication",
+        "api",
+        "restfulserver",
+        "security"
     ],
     "license": "BSD-3-Clause",
     "require": {

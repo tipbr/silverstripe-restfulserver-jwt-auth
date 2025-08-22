@@ -1,88 +1,178 @@
-# Silverstripe CMS supported module skeleton
+# JWT Authentication for SilverStripe RestfulServer
 
-A useful skeleton to more easily create a [Silverstripe CMS Module](https://docs.silverstripe.org/en/developer_guides/extending/modules/) that conform to the
-[Module Standard](https://docs.silverstripe.org/en/developer_guides/extending/modules/#module-standard).
+This module provides JWT (JSON Web Token) authentication for SilverStripe's RestfulServer module, enabling secure API access with proper permission integration.
 
-This README contains descriptions of the parts of this module base you should customise to meet you own module needs.
-For example, the module name in the H1 above should be you own module name, and the description text you are reading now
-is where you should provide a good short explanation of what your module does.
+## Features
 
-Where possible we have included default text that can be included as is into your module and indicated in
-other places where you need to customise it
+- **JWT Token Authentication**: Secure API authentication using industry-standard JWT tokens
+- **RestfulServer Integration**: Seamlessly integrates with SilverStripe's RestfulServer module
+- **Permission Checking**: Respects DataObject `canView()`, `canEdit()`, `canDelete()`, and `canCreate()` methods
+- **Automatic Token Renewal**: Tokens are automatically renewed when close to expiry
+- **CORS Support**: Built-in CORS headers for cross-domain API access
+- **Auth API Endpoints**: Login, logout, token refresh, password reset functionality
 
-Below is a template of the sections of your `README.md` you should ideally include to met the Module Standard
-and help others make use of your modules.
+## Quick Start
 
-## Steps to prepare this module for your own use
+### 1. Installation
 
-Ensure you read the
-['publishing a module'](https://docs.silverstripe.org/en/developer_guides/extending/how_tos/publish_a_module/) guide
-and update your module's `composer.json` to designate your code as a Silversripe CMS module.
+```bash
+composer require tipbr/silverstripe-restfulserver-jwt-auth
+```
 
-- Clone this repository into a folder
-- Add your name/organisation to `LICENSE.md`
-- Update this README with information about your module. Ensure sections that aren't relevant are deleted and
-placeholders are edited where relevant
-- Review the README files in the various provided directories. You should ultimately delete these README files when you have added your code
-- Update the module's `composer.json` with your requirements and package name
-- Update (or remove) `package.json` with your requirements and package name. Run `yarn install` (or remove `yarn.lock`) to
-ensure dependencies resolve correctly
-- Clear the git history by running `rm -rf .git && git init`
-- Add and push to a VCS repository
-- Either [publish](https://getcomposer.org/doc/02-libraries.md#publishing-to-packagist) the module on packagist.org, or add a [custom repository](https://getcomposer.org/doc/02-libraries.md#publishing-to-a-vcs) to your main `composer.json`
-- Require the module in your main `composer.json`
-- If you need to build your css or js and are using components, injector, scss variables, etc from `silverstripe/admin`:
-  - Ensure that `silverstripe/admin` is installed with `composer install --prefer-source` instead of the default `--prefer-dist` (you can use `composer reinstall silverstripe/admin --prefer-source` if you already installed it)
-  - If you are relying on additional dependencies from `silverstripe/admin` instead of adding them as dependencies in your `package.json` file, you need to install third party dependencies in `silverstripe/admin` by running `yarn install` in the `vendor/silverstripe/admin/` directory.
-- Start developing your module!
+### 2. Configuration
+
+Set your JWT secret in your environment file:
+
+```bash
+# .env
+JWT_SECRET=your-super-secret-jwt-key-here
+```
+
+The module comes pre-configured but you can customize settings in `_config.yml`:
+
+```yaml
+# Configure JWT Service
+Tipbr\Services\JWTService:
+  lifetime: 604800      # 7 days in seconds
+  renewal_threshold: 3600  # 1 hour in seconds
+  algorithm: 'HS256'
+```
+
+### 3. Enable API Access on Your DataObjects
+
+```php
+<?php
+
+class MyDataObject extends DataObject 
+{
+    private static $api_access = true;
+    
+    private static $db = [
+        'Title' => 'Varchar(255)',
+        'Content' => 'Text'
+    ];
+    
+    // Permission methods are automatically respected
+    public function canView($member = null) {
+        return $member && $member->exists();
+    }
+    
+    public function canEdit($member = null) {
+        return $member && $member->inGroup('editors');
+    }
+}
+```
+
+## Usage
+
+### Authentication
+
+#### Get a JWT Token
+
+```bash
+curl -X POST http://yoursite.com/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"Email": "user@example.com", "Password": "password"}'
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+  }
+}
+```
+
+### API Access
+
+Once you have a JWT token, use it to access RestfulServer endpoints:
+
+```bash
+# Get a DataObject
+curl -X GET http://yoursite.com/api/MyDataObject/1 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Create a DataObject
+curl -X POST http://yoursite.com/api/MyDataObject \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"Title": "My New Object"}'
+
+# Update a DataObject  
+curl -X PUT http://yoursite.com/api/MyDataObject/1 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"Title": "Updated Title"}'
+
+# Delete a DataObject
+curl -X DELETE http://yoursite.com/api/MyDataObject/1 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## Authentication Endpoints
+
+- `POST /auth/login` - Authenticate and get a JWT token
+- `GET /auth/verify` - Verify the current token and get user info
+- `POST /auth/refresh` - Get a fresh JWT token
+- `POST /auth/register` - Register a new user account
+- `POST /auth/forgotPassword` - Request a password reset
+- `POST /auth/resetPassword` - Reset password with token
+- `POST /auth/changePassword` - Change password for authenticated user
+- `POST /auth/logout` - Invalidate current session
+
+## Permission Integration
+
+The authenticator integrates seamlessly with SilverStripe's permission system. RestfulServer automatically calls the appropriate permission methods on your DataObjects:
+
+- `canView()` for GET requests
+- `canEdit()` for PUT requests  
+- `canDelete()` for DELETE requests
+- `canCreate()` for POST requests
+
+The authenticated user is available via `Security::getCurrentUser()` in these methods.
+
+## Documentation
+
+- [Complete Documentation](docs/README.md)
+- [Authentication Demo](docs/authentication-demo.php)
+
+## Requirements
+
+- SilverStripe Framework 6.0+
+- SilverStripe Admin 3.0+
+- SilverStripe RestfulServer 4.x
+- Firebase JWT 6.0+
+
+## Testing
+
+Run the test suite:
+
+```bash
+vendor/bin/phpunit tests/php/Authentication/
+```
+
+## Security Considerations
+
+1. **JWT Secret**: Use a strong, randomly generated secret
+2. **HTTPS**: Always use HTTPS in production
+3. **Token Expiry**: Configure appropriate token lifetimes
+4. **Permissions**: Implement proper permission methods on DataObjects
+
+## Migration Notes
+
+This version represents a major overhaul from previous versions to properly integrate with RestfulServer's authentication system. Key changes:
+
+- Authenticator now uses static `authenticate()` method matching RestfulServer patterns
+- Proper integration with SilverStripe's Security system
+- Permission checking through DataObject methods (canView/canEdit/etc.)
+- Simplified configuration and improved documentation
 
 ## License
 
 See [License](LICENSE.md)
 
-This module template defaults to using the "BSD-3-Clause" license. The BSD-3 license is one of the most
-permissive open-source license and is used by most Silverstripe CMS module.
+## Support
 
-To publish your module under a different license:
-
-- update the [`license.md`](LICENSE.md) file
-- update the `license' key in your [`composer.json`](composer.json).
-
-You can use [choosealicense.com](https://choosealicense.com) to help you pick a suitable license for your project.
-
-You do not need to keep this section in your README file - the `LICENSE.md` file is sufficient.
-
-## Installation
-
-Replace `silverstripe-module/skeleton` in the command below with the composer name of your module.
-
-```sh
-composer require silverstripe-module/skeleton
-```
-
-**Note:** When you have completed your module, submit it to Packagist or add it as a VCS repository to your
-project's composer.json, pointing to the private repository URL.
-
-## Documentation
-
-- [Documentation readme](docs/en/README.md)
-
-Add links into your `docs/<language>` folder here unless your module only requires minimal documentation
-in that case, add here and remove the docs folder. You might use this as a quick table of content if you
-mhave multiple documentation pages.
-
-## Example configuration
-
-If your module makes use of the config API in Silverstripe CMS it's a good idea to provide an example config
-here that will get the module working out of the box and expose the user to the possible configuration options.
-Though note that in many cases simply linking to the documentation is enough.
-
-Provide a syntax-highlighted code examples where possible.
-
-```yaml
-Page:
-  config_option: true
-  another_config:
-    - item1
-    - item2
-```
+For issues and support, please visit the [GitHub repository](https://github.com/tipbr/silverstripe-restfulserver-jwt-auth).
