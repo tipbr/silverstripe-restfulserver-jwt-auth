@@ -1,5 +1,5 @@
 {
-    "name": "tipbr/silverstripe-restfulserver",
+    "name": "tipbr/silverstripe-restfulserver-jwt-auth",
     "description": "A skeleton for Silverstripe CMS modules.",
     "type": "silverstripe-vendormodule",
     "keywords": [
