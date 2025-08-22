@@ -5,45 +5,14 @@ namespace Tipbr\Extensions;
 use SilverStripe\Core\Extension;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Control\HTTPResponse;
-use SilverStripe\Security\Security;
-use SilverStripe\Core\Injector\Injector;
-use SilverStripe\Security\IdentityStore;
-use Tipbr\Authentication\JWTRestfulAuthenticator;
 
 /**
- * Extension for RestfulServer to handle JWT authentication
+ * Extension for RestfulServer to handle CORS and other API functionality
  * 
- * This extension hooks into RestfulServer's authentication process
- * to validate JWT tokens and set the current user context.
+ * Note: Authentication is now handled directly by RestfulServer using JWTRestfulAuthenticator
  */
 class JWTRestfulServerExtension extends Extension
 {
-    /**
-     * Hook into the authentication process before any RestfulServer action
-     * 
-     * @param HTTPRequest $request
-     * @param string $action
-     */
-    public function onBeforeInit(HTTPRequest $request, $action = null)
-    {
-        // Only process API requests (you might want to adjust this condition)
-        $isApiRequest = $this->isApiRequest($request);
-
-        if (!$isApiRequest) {
-            return;
-        }
-
-        // Try JWT authentication
-        $authenticator = new JWTRestfulAuthenticator();
-        $member = $authenticator->authenticate($request);
-
-        if ($member) {
-            // Set the current user for this request
-            Injector::inst()->get(IdentityStore::class)->logIn($member);
-            Security::setCurrentUser($member);
-        }
-    }
-
     /**
      * Add CORS headers to API responses
      * 

@@ -13,7 +13,6 @@ Tipbr\Tasks\PasswordResetRequestCleanup_CronTask:
 # Configure RestfulServer to use JWT authentication
 SilverStripe\RestfulServer\RestfulServer:
   authenticator: 'Tipbr\Authentication\JWTRestfulAuthenticator'
-  permission_checker: 'Tipbr\Authentication\JWTPermissionChecker'
   # Extend RestfulServer with JWT functionality
   extensions:
     - Tipbr\Extensions\JWTRestfulServerExtension

@@ -3,8 +3,11 @@
 namespace Tipbr\Authentication;
 
 use SilverStripe\Security\Member;
+use SilverStripe\Security\Security;
+use SilverStripe\Control\Controller;
 use SilverStripe\Control\HTTPRequest;
-use SilverStripe\RestfulServer\Authenticator\RestfulAuthenticator;
+use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Security\IdentityStore;
 use Tipbr\Services\JWTService;
 
 /**
@@ -12,18 +15,22 @@ use Tipbr\Services\JWTService;
  * 
  * This authenticator validates JWT tokens from the Authorization header
  * and authenticates users for RestfulServer API endpoints.
+ * 
+ * Follows the same pattern as BasicRestfulAuthenticator with a static authenticate() method
+ * that returns a Member object or null if authentication fails.
  */
-class JWTRestfulAuthenticator implements RestfulAuthenticator
+class JWTRestfulAuthenticator
 {
     /**
-     * Authenticate a user from the current request
+     * The authenticate function
      * 
-     * @param HTTPRequest $request
-     * @return Member|null Returns the authenticated member or null if authentication fails
+     * Takes the JWT token from the Authorization header and attempts to authenticate a user
+     * 
+     * @return Member|null The Member object, or null if no member could be authenticated
      */
-    public function authenticate(HTTPRequest $request): ?Member
+    public static function authenticate(): ?Member
     {
-        $token = $this->getBearerToken($request);
+        $token = static::getBearerToken();
 
         if (!$token) {
             return null;
@@ -45,19 +52,23 @@ class JWTRestfulAuthenticator implements RestfulAuthenticator
             return null;
         }
 
+        // Set the current user in the security context for permission checks
+        Injector::inst()->get(IdentityStore::class)->logIn($member);
+        Security::setCurrentUser($member);
+
         // Optional: Renew token if needed and add to response headers
         try {
             $renewedToken = $jwtService->renewToken($token);
             if ($renewedToken !== $token) {
                 // Add renewed token to response headers for client to use
-                $response = $request->getSession()->getResponse();
-                if ($response) {
-                    $response->addHeader('X-Renewed-Token', $renewedToken);
+                $controller = Controller::curr();
+                if ($controller && $controller->getResponse()) {
+                    $controller->getResponse()->addHeader('X-Renewed-Token', $renewedToken);
                 }
             }
         } catch (\Exception $e) {
             // Token renewal failed, but we can still authenticate with the current token
-            // Log this if needed
+            // Log this if needed - could add logging here in the future
         }
 
         return $member;
@@ -66,12 +77,11 @@ class JWTRestfulAuthenticator implements RestfulAuthenticator
     /**
      * Extract Bearer token from Authorization header
      * 
-     * @param HTTPRequest $request
      * @return string|null
      */
-    protected function getBearerToken(HTTPRequest $request): ?string
+    protected static function getBearerToken(): ?string
     {
-        $header = $this->getAuthorizationHeader($request);
+        $header = static::getAuthorizationHeader();
 
         if (!empty($header)) {
             if (preg_match('/Bearer\s(\S+)/', $header, $matches)) {
@@ -85,17 +95,17 @@ class JWTRestfulAuthenticator implements RestfulAuthenticator
     /**
      * Get Authorization header from request
      * 
-     * @param HTTPRequest $request
      * @return string
      */
-    protected function getAuthorizationHeader(HTTPRequest $request): string
+    protected static function getAuthorizationHeader(): string
     {
         $header = '';
 
-        if ($auth = $request->getHeader('Authorization')) {
-            $header = trim($auth);
-        } elseif ($auth = $request->getHeader('HTTP_AUTHORIZATION')) {
-            $header = trim($auth);
+        // Try different ways to get the Authorization header
+        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $header = trim($_SERVER['HTTP_AUTHORIZATION']);
+        } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            $header = trim($_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
         } elseif (function_exists('apache_request_headers')) {
             $requestHeaders = apache_request_headers();
             $requestHeaders = array_combine(
@@ -105,6 +115,14 @@ class JWTRestfulAuthenticator implements RestfulAuthenticator
 
             if (isset($requestHeaders['Authorization'])) {
                 $header = trim($requestHeaders['Authorization']);
+            }
+        } elseif (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            foreach ($headers as $name => $value) {
+                if (strtolower($name) === 'authorization') {
+                    $header = trim($value);
+                    break;
+                }
             }
         }
 
