@@ -2,6 +2,7 @@
 
 namespace Tipbr\Traits;
 
+use Ramsey\Uuid\Uuid;
 use SilverStripe\Core\Convert;
 use SilverStripe\Security\Security;
 
@@ -440,22 +441,6 @@ trait ApiDataObjectTrait
      */
     protected function generateUUID(): string
     {
-        // Use ramsey/uuid if available (it's included in SilverStripe)
-        if (class_exists('Ramsey\Uuid\Uuid')) {
-            return \Ramsey\Uuid\Uuid::uuid4()->toString();
-        }
-        
-        // Fallback to a simple UUID v4 implementation
-        return sprintf(
-            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0x0fff) | 0x4000,
-            mt_rand(0, 0x3fff) | 0x8000,
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff)
-        );
+        return Uuid::uuid4()->toString();
     }
 }
