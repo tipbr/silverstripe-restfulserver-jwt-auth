@@ -2,40 +2,24 @@
 
 namespace Tipbr\Tasks;
 
-use SilverStripe\ORM\DB;
 use SilverStripe\Dev\BuildTask;
+use SilverStripe\PolyExecution\PolyOutput;
 use TipBr\DataObjects\PasswordResetRequest;
+use Symfony\Component\Console\Input\InputInterface;
 
-/**
- * Task to clean up expired PasswordResetRequests
- */
 class PasswordResetCleanupTask extends BuildTask
 {
-    /**
-     * @var string
-     */
-    protected $title = 'Clean up expired password reset requests';
-
-    /**
-     * @var string
-     */
-    protected $description = 'Deletes password reset requests that are more than 1 hour old';
-
-    /**
-     * @var bool
-     */
+    protected string $title = 'Clean up expired password reset requests';
+    protected static string $description = 'Deletes password reset requests that are more than 1 hour old';
     private static $segment = 'PasswordResetCleanupTask';
 
-    /**
-     * Run the task
-     */
-    public function run($request)
+    public function execute(InputInterface $input, PolyOutput $output): int
     {
         $cutoffTime = date('Y-m-d H:i:s', strtotime('-1 hour'));
 
         // Get all expired requests
-        $expiredRequests = PasswordResetRequest::get()->where([
-            "Created < ?" => $cutoffTime
+        $expiredRequests = PasswordResetRequest::get()->filter([
+            "Created:LessThan" => $cutoffTime
         ]);
 
         $count = $expiredRequests->count();
@@ -44,10 +28,11 @@ class PasswordResetCleanupTask extends BuildTask
             foreach ($expiredRequests as $request) {
                 $request->delete();
             }
-
-            DB::alteration_message("Deleted $count expired password reset requests.", 'deleted');
+            $output->writeln("Deleted $count expired password reset requests.");
         } else {
-            DB::alteration_message("No expired password reset requests found.", 'created');
+            $output->writeln("No expired password reset requests found.");
         }
+
+        return 0;
     }
 }
