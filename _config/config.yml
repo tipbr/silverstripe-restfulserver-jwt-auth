@@ -1,13 +1,43 @@
-# see https://docs.silverstripe.org/en/developer_guides/configuration/configuration/
+---
+Name: jwt-auth-config
+After: 
+  - '#restfulserver-config'
+---
 
-# Password Reset Request Cleanup Configuration
 Tipbr\Tasks\PasswordResetCleanupTask:
-  # Time period after which password reset requests are considered expired and will be deleted
-  # Format: any string acceptable by strtotime() (e.g., '1 hour', '30 minutes', '2 days')
   cutoff_time: '1 hour'
 
 Tipbr\Tasks\PasswordResetRequestCleanup_CronTask:
-  # Cron schedule for running the password reset cleanup task
-  # Format: standard cron expression (minute hour day month weekday)
-  # Default: "*/5 * * * *" runs every 5 minutes
   schedule: "*/5 * * * *"
+
+# Configure RestfulServer to use JWT authentication
+SilverStripe\RestfulServer\RestfulServer:
+  authenticator: 'Tipbr\Authentication\JWTRestfulAuthenticator'
+  permission_checker: 'Tipbr\Authentication\JWTPermissionChecker'
+  # Extend RestfulServer with JWT functionality
+  extensions:
+    - Tipbr\Extensions\JWTRestfulServerExtension
+
+# Configure JWT Service defaults
+Tipbr\Services\JWTService:
+  # JWT lifetime in seconds (7 days)
+  lifetime: 604800
+  # Renewal threshold in seconds (1 hour) 
+  renewal_threshold: 3600
+  # JWT algorithm
+  algorithm: 'HS256'
+
+# Configure API routes
+SilverStripe\Control\Director:
+  rules:
+    'auth//$Action//$ID/$OtherID': 'Tipbr\Controllers\AuthApiController'
+    'api//$ClassName!/$ID/$Relation/$RelationID': 'SilverStripe\RestfulServer\RestfulServer'
+
+# Optional: Configure CORS for development
+# Remove or modify for production
+SilverStripe\Control\HTTPResponse:
+  cors:
+    enabled: true
+    allow_origin: '*'
+    allow_headers: 'Authorization, Content-Type, Accept'
+    allow_methods: 'GET, POST, PUT, DELETE, OPTIONS'

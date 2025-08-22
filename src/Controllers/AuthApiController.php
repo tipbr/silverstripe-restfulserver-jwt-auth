@@ -17,7 +17,8 @@ class AuthApiController extends ApiController
         'register',
         'forgotPassword',
         'resetPassword',
-        'changePassword'
+        'changePassword',
+        'logout'
     ];
 
     public function index()
@@ -29,7 +30,14 @@ class AuthApiController extends ApiController
     {
         $this->ensurePOST();
 
-        list($email, $password) = $this->ensureVars(['Email', 'Password']);
+        list($email, $password) = $this->ensureVars([
+            'Email' => function ($email) {
+                return filter_var($email, FILTER_VALIDATE_EMAIL);
+            },
+            'Password' => function ($password) {
+                return strlen($password) >= 8; // TODO: make configurable
+            }
+        ]);
 
         $member = Member::get()->filter('Email', $email)->first();
         if (!$member || !$member->checkPassword($password)->isValid()) {
@@ -199,5 +207,20 @@ class AuthApiController extends ApiController
         $member->write();
 
         return $this->success();
+    }
+
+    public function logout()
+    {
+        $this->ensurePOST();
+
+        // Invalidate the current session
+        $member = $this->ensureUserLoggedIn();
+        if (!$member) {
+            return $this->httpError(401, 'Not logged in');
+        }
+
+    // TODO: invalidate all tokens for this user
+
+        return $this->success(['message' => 'Logged out successfully']);
     }
 }

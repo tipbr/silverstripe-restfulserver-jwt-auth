@@ -11,6 +11,7 @@
         "silverstripe/framework": "^6.0",
         "silverstripe/admin": "^3.0",
         "silverstripe/crontask": "^4.0",
+        "silverstripe/restfulserver": "4.x-dev",
         "firebase/php-jwt": "^6.0"
     },
     "require-dev": {
