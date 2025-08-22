@@ -5,6 +5,7 @@ namespace Tipbr\Traits;
 use Ramsey\Uuid\Uuid;
 use SilverStripe\Core\Convert;
 use SilverStripe\Security\Security;
+use Tipbr\Interfaces\ApiDataObject;
 
 /**
  * Trait that provides default implementation for ApiDataObject interface
