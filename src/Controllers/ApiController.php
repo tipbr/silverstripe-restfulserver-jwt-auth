@@ -5,7 +5,7 @@ namespace Tipbr\Controllers;
 use ArrayAccess;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-use Level51\JWTUtils\JWTUtils;
+use Tipbr\Services\JWTService;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
 use SilverStripe\Control\Controller;
@@ -17,6 +17,7 @@ use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Security\IdentityStore;
 use SilverStripe\Model\List\PaginatedList;
 use SilverStripe\Control\HTTPResponse_Exception;
+use Tipbr\Interfaces\ApiDataObject;
 
 class ApiController extends Controller
 {
@@ -199,6 +200,8 @@ class ApiController extends Controller
         foreach ($list as $item) {
             if ($dataFunc) {
                 $record = $dataFunc($item);
+            } elseif ($item instanceof ApiDataObject) {
+                $record = $item->toApi();
             } elseif (is_array($item)) {
                 $record = $item;
             } else {
@@ -226,35 +229,41 @@ class ApiController extends Controller
      */
     public function ensureUserLoggedIn(?array $permissionCodes = null): Member
     {
-        $token = JWT::decode(
-            $this->getJwt(),
-            new Key(
-                Config::inst()->get(JWTUtils::class, 'secret'),
-                'HS256'
-            )
-        );
-
-        $member = Member::get()->byID($token->memberId);
-
-        if ($member) {
-            if ($permissionCodes) {
-                if (!Permission::checkMember($member, $permissionCodes)) {
-                    return $this->httpError(401);
-                }
-            }
-
-            Injector::inst()->get(IdentityStore::class)->logIn($member);
-
-            Security::setCurrentUser($member);
-
-            return $member;
-        } else {
-            return $this->httpError(401);
+        $jwtService = JWTService::singleton();
+        $token = $this->getBearerToken();
+        
+        if (!$token) {
+            return $this->httpError(401, 'No authorization token provided');
         }
+        
+        if (!$jwtService->validateToken($token)) {
+            return $this->httpError(401, 'Invalid or expired token');
+        }
+        
+        $memberId = $jwtService->getMemberIdFromToken($token);
+        if (!$memberId) {
+            return $this->httpError(401, 'Invalid token payload');
+        }
+        
+        $member = Member::get()->byID($memberId);
+        if (!$member) {
+            return $this->httpError(401, 'Member not found');
+        }
+
+        if ($permissionCodes) {
+            if (!Permission::checkMember($member, $permissionCodes)) {
+                return $this->httpError(403, 'Insufficient permissions');
+            }
+        }
+
+        Injector::inst()->get(IdentityStore::class)->logIn($member);
+        Security::setCurrentUser($member);
+
+        return $member;
     }
 
     /**
-     * Returns the JWT token from the Authorization header.
+     * Returns the JWT token from the Authorization header, with renewal if needed.
      *
      * @throws HTTPResponse_Exception
      */
@@ -263,37 +272,32 @@ class ApiController extends Controller
         $bearer = $this->getBearerToken();
 
         if (!$bearer) {
-            return $this->httpError(401);
+            return $this->httpError(401, 'No authorization token provided');
         }
 
-        if (!JWTUtils::inst()->check($bearer)) {
-            return $this->httpError(401);
+        $jwtService = JWTService::singleton();
+        
+        if (!$jwtService->validateToken($bearer)) {
+            return $this->httpError(401, 'Invalid or expired token');
         }
 
-        $token = JWT::decode(
-            $bearer,
-            new Key(
-                Config::inst()->get(JWTUtils::class, 'secret'),
-                'HS256'
-            )
-        );
-
-        $jwt = JWTUtils::inst()->renew($bearer);
-
-        if (!$jwt) {
-            return $this->httpError(401);
+        try {
+            $renewedToken = $jwtService->renewToken($bearer);
+            
+            // Set the current user from the token
+            $memberId = $jwtService->getMemberIdFromToken($renewedToken);
+            if ($memberId) {
+                $member = Member::get()->byID($memberId);
+                if ($member) {
+                    Injector::inst()->get(IdentityStore::class)->logIn($member);
+                    Security::setCurrentUser($member);
+                }
+            }
+            
+            return $renewedToken;
+        } catch (\Exception $e) {
+            return $this->httpError(401, 'Token renewal failed');
         }
-
-        // Set the current user
-        $memberId = $token->memberId;
-        $member = Member::get()->byID($memberId);
-
-        if ($member) {
-            Injector::inst()->get(IdentityStore::class)->logIn($member);
-            Security::setCurrentUser($member);
-        }
-
-        return $jwt;
     }
 
 
@@ -459,5 +463,29 @@ class ApiController extends Controller
         }
 
         $this->httpError(400, 'Request must be provided as a DELETE request');
+    }
+
+    /**
+     * Helper method to find an ApiDataObject by its API identifier (UUID or ID)
+     */
+    protected function findApiObject(string $className, string $identifier)
+    {
+        if (!class_exists($className)) {
+            return $this->httpError(400, 'Invalid object type');
+        }
+
+        $singleton = singleton($className);
+        
+        if (!($singleton instanceof ApiDataObject)) {
+            return $this->httpError(400, 'Object does not implement ApiDataObject');
+        }
+
+        $object = $className::getByApiId($identifier);
+        
+        if (!$object) {
+            return $this->httpError(404, ucfirst(basename($className)) . ' not found');
+        }
+
+        return $object;
     }
 }

@@ -5,6 +5,7 @@ namespace Tipbr\Controllers;
 use SilverStripe\Security\Group;
 use SilverStripe\Security\Member;
 use Tipbr\Controllers\ApiController;
+use Tipbr\Services\JWTService;
 use Tipbr\DataObjects\PasswordResetRequest;
 
 class AuthApiController extends ApiController
@@ -25,8 +26,21 @@ class AuthApiController extends ApiController
     }
 
     public function login()
-    {}
+    {
+        $this->ensurePOST();
 
+        list($email, $password) = $this->ensureVars(['Email', 'Password']);
+
+        $member = Member::get()->filter('Email', $email)->first();
+        if (!$member || !$member->checkPassword($password)->isValid()) {
+            return $this->httpError(401, 'Invalid credentials');
+        }
+
+        $jwtService = JWTService::singleton();
+        $token = $jwtService->generateToken($member);
+
+        return $this->success(['token' => $token]);
+    }
     public function verify()
     {
         $this->ensureGET();
@@ -41,8 +55,39 @@ class AuthApiController extends ApiController
         ]);
     }
 
-    public function refresh() {
+    public function refresh()
+    {
+        $this->ensurePOST();
 
+        try {
+            $currentToken = $this->getBearerToken();
+            if (!$currentToken) {
+                return $this->httpError(401, 'No token provided');
+            }
+
+            $jwtService = JWTService::singleton();
+            
+            if (!$jwtService->validateToken($currentToken)) {
+                return $this->httpError(401, 'Invalid token');
+            }
+
+            $memberId = $jwtService->getMemberIdFromToken($currentToken);
+            if (!$memberId) {
+                return $this->httpError(401, 'Invalid token payload');
+            }
+
+            $member = Member::get()->byID($memberId);
+            if (!$member) {
+                return $this->httpError(401, 'Member not found');
+            }
+
+            // Generate a fresh token (not just renewed)
+            $newToken = $jwtService->generateToken($member);
+
+            return $this->success(['token' => $newToken]);
+        } catch (\Exception $e) {
+            return $this->httpError(401, 'Token refresh failed');
+        }
     }
 
     public function register()
