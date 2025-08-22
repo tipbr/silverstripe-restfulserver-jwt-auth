@@ -1,0 +1,6 @@
+SilverStripe\Security\Member:
+  testmember:
+    Email: test@example.com
+    FirstName: Test
+    Surname: User
+    Password: testpassword123
