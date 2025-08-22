@@ -2,32 +2,25 @@
 
 namespace Tipbr\Tasks;
 
-use SilverStripe\CronTask\Interfaces\CronTask;
 use TipBr\Tasks\PasswordResetCleanupTask;
+use SilverStripe\PolyExecution\PolyOutput;
+use SilverStripe\CronTask\Interfaces\CronTask;
+use Symfony\Component\Console\Input\ArrayInput;
 
-/**
- * Scheduled task to clean up expired password reset requests
- */
 class PasswordResetRequestCleanup_CronTask implements CronTask
 {
-    /**
-     * Run this task every 5 minutes
-     *
-     * @return string
-     */
     public function getSchedule()
     {
         return "*/5 * * * *";
     }
 
-    /**
-     * Task to run
-     *
-     * @return void
-     */
     public function process()
     {
         $task = new PasswordResetCleanupTask();
-        $task->run(null);
+        
+        $input = new ArrayInput([]);
+        $output = new PolyOutput('cli');
+
+        $task->execute($input, $output);
     }
 }
