@@ -39,8 +39,12 @@ class AuthApiController extends ApiController
             }
         ]);
 
-        $member = Member::get()->filter('Email', $email)->first();
-        if (!$member || !$member->checkPassword($password)->isValid()) {
+        $member = Member::authenticate([
+            'Email' => $email,
+            'Password' => $password
+        ]);
+        
+        if (!$member) {
             return $this->httpError(401, 'Invalid credentials');
         }
 
@@ -199,7 +203,13 @@ class AuthApiController extends ApiController
 
         $member = $this->ensureUserLoggedIn();
 
-        if (!$member->checkPassword($oldPassword)->isValid()) {
+        // Verify the old password by attempting to authenticate with current email and old password
+        $verifiedMember = Member::authenticate([
+            'Email' => $member->Email,
+            'Password' => $oldPassword
+        ]);
+        
+        if (!$verifiedMember) {
             return $this->httpError(403, 'Invalid password');
         }
 
