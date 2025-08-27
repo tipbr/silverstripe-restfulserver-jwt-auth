@@ -153,26 +153,6 @@ Run the test suite:
 vendor/bin/phpunit tests/php/Authentication/
 ```
 
-## Security Considerations
-
-1. **JWT Secret**: Use a strong, randomly generated secret
-2. **HTTPS**: Always use HTTPS in production
-3. **Token Expiry**: Configure appropriate token lifetimes
-4. **Permissions**: Implement proper permission methods on DataObjects
-
-## Migration Notes
-
-This version represents a major overhaul from previous versions to properly integrate with RestfulServer's authentication system. Key changes:
-
-- Authenticator now uses static `authenticate()` method matching RestfulServer patterns
-- Proper integration with SilverStripe's Security system
-- Permission checking through DataObject methods (canView/canEdit/etc.)
-- Simplified configuration and improved documentation
-
-## License
-
-See [License](LICENSE.md)
-
 ## Support
 
 For issues and support, please visit the [GitHub repository](https://github.com/tipbr/silverstripe-restfulserver-jwt-auth).
